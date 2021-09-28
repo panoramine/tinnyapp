@@ -4,7 +4,6 @@ const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 
 app.use(bodyParser.urlencoded({extended: true}));
-
 app.set("view engine", "ejs");
 
 const urlDatabase = {
@@ -21,6 +20,12 @@ app.post("/urls", (req, res) => {
   const tinyString = generateRandomString();
   urlDatabase[tinyString] = req.body.longURL;   //console.log(urlDatabase) new pair key value is added
   res.redirect(`/urls/${tinyString}`);
+});
+
+app.post("/urls/:shortUrl/delete", (req, res) => {
+  const databaseKey = req.params.shortUrl;
+  delete urlDatabase[databaseKey];
+  res.redirect("/urls");
 });
 
 app.get("/u/:shortURL", (req, res) => {
