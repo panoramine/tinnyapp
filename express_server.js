@@ -19,9 +19,8 @@ app.get("/", (req, res) => {
 app.post("/urls", (req, res) => {
   console.log(req.body);  // Log the POST request body to the console
   const tinyString = generateRandomString();
-  urlDatabase[tinyString] = req.body.longURL;
-  console.log(urlDatabase);
-  res.send("Ok");         // Respond with 'Ok' (we will replace this)
+  urlDatabase[tinyString] = req.body.longURL;   //console.log(urlDatabase) new pair key value is added
+  res.redirect(`/urls/${tinyString}`);
 });
 
 app.get("/hello", (req, res) => {
@@ -51,11 +50,11 @@ app.listen(PORT, () => {
 });
 
 function generateRandomString() {
-  let chars = "0123456789abcdefghijklmnopqrstuvwxyz";
+  let chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
   let charsArray = chars.split("");
   let tinyUrl = "";
   for (let i = 0; i < 6; i ++) {
-    let randomIndex = Math.floor(Math.random() * 37);
+    let randomIndex = Math.floor(Math.random() * charsArray.length);
     tinyUrl += charsArray[randomIndex];
   }
   return tinyUrl;
