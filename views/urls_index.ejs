@@ -17,6 +17,7 @@
         <tr>
           <th scope="col">Short URL</th>
           <th scope="col">Long URL</th>
+          <th scope="col">Edit</th>
           <th scope="col">Delete</th>
         </tr>
       </thead>
@@ -25,6 +26,9 @@
           <tr>
             <td><%= shortURL %></td>
             <td><%= urls[shortURL] %></td>
+            <td><form action="/urls/<%= shortURL %>/redirect" method="POST">
+              <button style= 'background-color: white; border-radius: 1mm; border-color:dodgerblue; color:dodgerblue; border-style: dotted;' type="submit">Edit</button>
+            </form></td>
             <td><form method="POST" action="/urls/<%= shortURL %>/delete">
               <button style= 'background-color: white; border-radius: 1mm; border-color:red; color: red; border-style: dotted;' type="submit">Delete</button>
             </form></td>
