@@ -2,12 +2,12 @@ const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
-var cookieParser = require('cookie-parser')
+const cookieParser = require('cookie-parser')
 
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.set("view engine", "ejs");
-app.use(cookieParser())
+app.use(cookieParser());
 
 
 const urlDatabase = {
@@ -15,12 +15,50 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+const users = { 
+  "userRandomID": {
+    id: "userRandomID", 
+    email: "user@example.com", 
+    password: "purple-monkey-dinosaur"
+  }
+};
+
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
 
+app.get("/register", (req, res) => {
+  res.render("register");
+});
+
+app.post("/register", (req, res) => {
+  const email = req.body.email;
+  const password = req.body.password;
+
+  if ( !email || !password ) {
+    return res.status(400).send("email or password cannot be blank");
+  }
+
+  const user = findUserByEmail(email);
+
+  if (user) {   
+    return res.status(400).send("user with that email currently exists");
+  }
+
+  const id = Math.floor(Math.random() * 5000) + 1;
+
+  users[id] = {
+    id,
+    email,
+    password
+  }
+
+  res.cookie("user_id", users[id].id);
+
+  res.redirect("/urls");
+});
+
 app.post("/urls/new", (req, res) => {
-  // console.log(req.body);  // Log the POST request body to the console
   if (req.body.longURL.length === 0) {
     res.redirect("/urls/new");
   }
@@ -99,4 +137,14 @@ function generateRandomString() {
     tinyUrl += charsArray[randomIndex];
   }
   return tinyUrl;
-}
+};
+
+function findUserByEmail(email) {
+  for (let userId in users) {
+    const user = users[userId];
+    if (user.email === email) {
+      return user;
+    }
+  }
+  return null;
+};
