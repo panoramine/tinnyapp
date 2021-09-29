@@ -36,13 +36,13 @@ app.post("/register", (req, res) => {
   const password = req.body.password;
 
   if ( !email || !password ) {
-    return res.status(400).send("email or password cannot be blank");
+    return res.status(400).send("400: email or password cannot be blank");
   }
 
   const user = findUserByEmail(email);
 
   if (user) {   
-    return res.status(400).send("user with that email currently exists");
+    return res.status(400).send("400: user with that email currently exists");
   }
 
   const id = Math.floor(Math.random() * 5000) + 1;
