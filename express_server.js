@@ -40,7 +40,6 @@ app.post("/register", (req, res) => {
   }
 
   const user = findUserByEmail(email);
-  console.log(users)
 
   if (user) {   
     return res.status(400).send("400: user with that email currently exists");
@@ -88,7 +87,24 @@ app.post("/urls/:id", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  res.cookie("user_id", users[req.cookies["user_id"]]);
+  const email = req.body.email;
+  const password = req.body.password;
+
+  if ( !email || !password ) {
+    return res.status(400).send("400: email or password cannot be blank");
+  }
+
+  const user = findUserByEmail(email);
+  console.log(user)
+  if (!user) {   
+    return res.status(403).send("403: e-mail cannot be found");
+  }
+
+  if (user.password !== password) {
+    return res.status(403).send("403: password is not a match");
+  }
+
+  res.cookie("user_id", user.id);
   res.redirect("/urls");
 });
 
