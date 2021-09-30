@@ -3,14 +3,17 @@ const app = express();
 const PORT = 8080; // default port 8080
 const morgan = require("morgan")
 const bodyParser = require("body-parser");
-const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session')
 const bcrypt = require('bcryptjs');
 const { use } = require("chai");
 
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.set("view engine", "ejs");
-app.use(cookieParser());
+app.use(cookieSession({
+  name: 'session',
+  keys: ['secret key1', 'secret key2']
+}));
 app.use(morgan("tiny"));
 
 
@@ -64,7 +67,7 @@ app.post("/register", (req, res) => {
     password: hashedPasswrod
   };
 
-  res.cookie("user_id", users[id].id);
+  req.session.user_id = users[id].id;
   
   res.redirect("/urls");
 });
@@ -76,20 +79,20 @@ app.post("/urls/new", (req, res) => {
     const tinyString = generateRandomString();
     urlDatabase[tinyString] = {};
     urlDatabase[tinyString].longURL = req.body.longURL;
-    urlDatabase[tinyString].userID = req.cookies["user_id"];
+    urlDatabase[tinyString].userID = req.session.user_id;
     res.redirect(`/urls/${tinyString}`);
   }
 });
 
 app.post("/urls/:shortUrl/redirect", (req, res) => {
-  if (!req.cookies["user_id"]) {
+  if (!req.session.user_id) {
     return res.status(400).send("400: you need to be logged in to edit urls");
   }
 
   const userUrlDatabase = {};
 
   for (let shortUrlKey in urlDatabase) {
-    if (urlDatabase[shortUrlKey].userID === req.cookies["user_id"]) {
+    if (urlDatabase[shortUrlKey].userID === req.session.user_id) {
       userUrlDatabase[shortUrlKey] = urlDatabase[shortUrlKey].longURL;
     }
   }
@@ -103,14 +106,14 @@ app.post("/urls/:shortUrl/redirect", (req, res) => {
 });
 
 app.post("/urls/:shortUrl/delete", (req, res) => {
-  if (!req.cookies["user_id"]) {
+  if (!req.session.user_id) {
     return res.status(400).send("400: you need to be logged in to delete urls");
   }
 
   const userUrlDatabase = {};
 
   for (let shortUrlKey in urlDatabase) {
-    if (urlDatabase[shortUrlKey].userID === req.cookies["user_id"]) {
+    if (urlDatabase[shortUrlKey].userID === req.session.user_id) {
       userUrlDatabase[shortUrlKey] = urlDatabase[shortUrlKey].longURL;
     }
   }
@@ -149,7 +152,7 @@ app.post("/login", (req, res) => {
     return res.status(403).send("403: password is not a match");
   }
 
-  res.cookie("user_id", user.id);
+  req.session.user_id = user.id
   res.redirect("/urls");
 });
 
@@ -176,24 +179,24 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  if (!req.cookies["user_id"]) {
+  if (!req.session.user_id) {
     return res.status(400).send("400: you need to be logged in to have access to urls");
   }
 
   const userUrlDatabase = {};
 
   for (let shortUrlKey in urlDatabase) {
-    if (urlDatabase[shortUrlKey].userID === req.cookies["user_id"]) {
+    if (urlDatabase[shortUrlKey].userID === req.session.user_id) {
       userUrlDatabase[shortUrlKey] = urlDatabase[shortUrlKey].longURL;
     }
   }
 
-  const templateVars = { urls: userUrlDatabase, user: users[req.cookies["user_id"]] };
+  const templateVars = { urls: userUrlDatabase, user: users[req.session.user_id] };
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
-  const templateVars = { user: users[req.cookies["user_id"]] };
+  const templateVars = { user: users[req.session.user_id] };
 
   if (!templateVars.user) {
     return res.redirect("/login")
@@ -203,16 +206,16 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL, user: users[req.cookies["user_id"]] };
+  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL, user: users[req.session.user_id] };
   
-  if (!req.cookies["user_id"]) {
+  if (!req.session.user_id) {
     return res.status(400).send("400: you need to be logged in to have access to urls");
   }
 
   const userUrlDatabase = {};
 
   for (let shortUrlKey in urlDatabase) {
-    if (urlDatabase[shortUrlKey].userID === req.cookies["user_id"]) {
+    if (urlDatabase[shortUrlKey].userID === req.session.user_id) {
       userUrlDatabase[shortUrlKey] = urlDatabase[shortUrlKey].longURL;
     }
   }
