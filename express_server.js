@@ -3,6 +3,7 @@ const app = express();
 const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
+const { use } = require("chai");
 
 
 app.use(bodyParser.urlencoded({extended: true}));
@@ -76,11 +77,43 @@ app.post("/urls/new", (req, res) => {
 });
 
 app.post("/urls/:shortUrl/redirect", (req, res) => {
+  if (!req.cookies["user_id"]) {
+    return res.status(400).send("400: you need to be logged in to edit urls");
+  }
+
+  const userUrlDatabase = {};
+
+  for (let shortUrlKey in urlDatabase) {
+    if (urlDatabase[shortUrlKey].userID === req.cookies["user_id"]) {
+      userUrlDatabase[shortUrlKey] = urlDatabase[shortUrlKey].longURL;
+    }
+  }
+
+  if (!userUrlDatabase[req.params.shortUrl]) {
+    return res.status(400).send("400: you can only edit your own urls");
+  }
+  
   const shortURL = req.params.shortUrl;
   res.redirect(`/urls/${shortURL}`);
 });
 
 app.post("/urls/:shortUrl/delete", (req, res) => {
+  if (!req.cookies["user_id"]) {
+    return res.status(400).send("400: you need to be logged in to delete urls");
+  }
+
+  const userUrlDatabase = {};
+
+  for (let shortUrlKey in urlDatabase) {
+    if (urlDatabase[shortUrlKey].userID === req.cookies["user_id"]) {
+      userUrlDatabase[shortUrlKey] = urlDatabase[shortUrlKey].longURL;
+    }
+  }
+
+  if (!userUrlDatabase[req.params.shortUrl]) {
+    return res.status(400).send("400: you can only delete your own urls");
+  }
+
   const databaseKey = req.params.shortUrl;
   delete urlDatabase[databaseKey];
   res.redirect("/urls");
@@ -120,13 +153,14 @@ app.get("/login", (req, res) => {
 
 app.post("/logout", (req, res) => {
   res.clearCookie("user_id");
-  res.redirect("/urls");
+  res.redirect("/login");
 });
 
 app.get("/u/:shortURL", (req, res) => {
   if (!urlDatabase[req.params.shortURL].longURL) {
     return res.status(404).send("404: tiny url not found");
   }
+
   const longURL = urlDatabase[req.params.shortURL].longURL;
   res.redirect(longURL);
 });
@@ -136,20 +170,51 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase, user: users[req.cookies["user_id"]] };
+  if (!req.cookies["user_id"]) {
+    return res.status(400).send("400: you need to be logged in to have access to urls");
+  }
+
+  const userUrlDatabase = {};
+
+  for (let shortUrlKey in urlDatabase) {
+    if (urlDatabase[shortUrlKey].userID === req.cookies["user_id"]) {
+      userUrlDatabase[shortUrlKey] = urlDatabase[shortUrlKey].longURL;
+    }
+  }
+
+  const templateVars = { urls: userUrlDatabase, user: users[req.cookies["user_id"]] };
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
   const templateVars = { user: users[req.cookies["user_id"]] };
+
   if (!templateVars.user) {
     return res.redirect("/login")
   }
+
   res.render("urls_new", templateVars);
 });
 
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL, user: users[req.cookies["user_id"]] };
+  
+  if (!req.cookies["user_id"]) {
+    return res.status(400).send("400: you need to be logged in to have access to urls");
+  }
+
+  const userUrlDatabase = {};
+
+  for (let shortUrlKey in urlDatabase) {
+    if (urlDatabase[shortUrlKey].userID === req.cookies["user_id"]) {
+      userUrlDatabase[shortUrlKey] = urlDatabase[shortUrlKey].longURL;
+    }
+  }
+
+  if (!userUrlDatabase[req.params.shortURL]) {
+    return res.status(400).send(`400: ${req.params.shortURL} is not one of your short URLs`);
+  }
+
   res.render("urls_show", templateVars);
 });
 
@@ -177,6 +242,15 @@ const findUserByEmail = function(email) {
     const user = users[userId];
     if (user.email === email) {
       return user;
+    }
+  }
+  return null;
+};
+
+const urlsForUser = function(id) {
+  for (let shortURL in urlDatabase) {
+    if (urlDatabase[shortURL].userID === id) {
+      return urlDatabase[shortURL].longURL;
     }
   }
   return null;
