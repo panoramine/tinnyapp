@@ -6,6 +6,10 @@ const bodyParser = require("body-parser");
 const cookieSession = require('cookie-session')
 const bcrypt = require('bcryptjs');
 const { use } = require("chai");
+const helper = require("./helpers");
+const generateRandomString = helper.generateRandomString;
+const findUserByEmail = helper.findUserByEmail;
+const createUserUrlDatabase = helper.createUserUrlDatabase;
 
 
 app.use(bodyParser.urlencoded({extended: true}));
@@ -27,6 +31,7 @@ const urlDatabase = {
       userID: "aJ48lW"
   }
 };
+
 const users = {
   "userRandomID": {
     id: "userRandomID",
@@ -48,13 +53,13 @@ app.post("/register", (req, res) => {
   const password = req.body.password;
 
   if (!email || !password) {
-    return res.status(400).send("400: email or password cannot be blank");
+    return res.status(400).send("400: email or password cannot be blank, <a href='/register'>back to register</a>");
   }
 
-  const user = findUserByEmail(email);
+  const user = findUserByEmail(email, users);
 
   if (user) {
-    return res.status(400).send("400: user with that email currently exists");
+    return res.status(400).send("400: user with that email currently exists, <a href='/register'>back to register</a>");
   }
 
   const id = Math.floor(Math.random() * 5000) + 1;
@@ -89,13 +94,7 @@ app.post("/urls/:shortUrl/redirect", (req, res) => {
     return res.status(400).send("400: you need to be logged in to edit urls");
   }
 
-  const userUrlDatabase = {};
-
-  for (let shortUrlKey in urlDatabase) {
-    if (urlDatabase[shortUrlKey].userID === req.session.user_id) {
-      userUrlDatabase[shortUrlKey] = urlDatabase[shortUrlKey].longURL;
-    }
-  }
+  const userUrlDatabase = createUserUrlDatabase(urlDatabase, req.session.user_id);
 
   if (!userUrlDatabase[req.params.shortUrl]) {
     return res.status(400).send("400: you can only edit your own urls");
@@ -110,13 +109,7 @@ app.post("/urls/:shortUrl/delete", (req, res) => {
     return res.status(400).send("400: you need to be logged in to delete urls");
   }
 
-  const userUrlDatabase = {};
-
-  for (let shortUrlKey in urlDatabase) {
-    if (urlDatabase[shortUrlKey].userID === req.session.user_id) {
-      userUrlDatabase[shortUrlKey] = urlDatabase[shortUrlKey].longURL;
-    }
-  }
+  const userUrlDatabase = createUserUrlDatabase(urlDatabase, req.session.user_id);
 
   if (!userUrlDatabase[req.params.shortUrl]) {
     return res.status(400).send("400: you can only delete your own urls");
@@ -138,18 +131,18 @@ app.post("/login", (req, res) => {
   const password = req.body.password;
 
   if (!email || !password) {
-    return res.status(400).send("400: email or password cannot be blank");
+    return res.status(400).send("400: email or password cannot be blank, <a href='/login'>back to login</a>");
   }
 
-  const user = findUserByEmail(email);
-  console.log("user", user)
-  console.log("users", users)
+  const user = findUserByEmail(email, users);
+  console.log(users)
+  console.log(user)
   if (!user) {
-    return res.status(403).send("403: e-mail cannot be found");
+    return res.status(403).send("403: e-mail cannot be found, <a href='/login'>back to login</a>");
   }
 
   if (!bcrypt.compareSync(password, users[user.id].password)) {
-    return res.status(403).send("403: password is not a match");
+    return res.status(403).send("403: password is not a match, <a href='/login'>back to login</a>");
   }
 
   req.session.user_id = user.id
@@ -161,7 +154,7 @@ app.get("/login", (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  req.session = null;
   res.redirect("/login");
 });
 
@@ -180,16 +173,10 @@ app.get("/hello", (req, res) => {
 
 app.get("/urls", (req, res) => {
   if (!req.session.user_id) {
-    return res.status(400).send("400: you need to be logged in to have access to urls");
+    return res.status(400).send("400: you must be <a href='/login'>logged in</a> to have access to urls");
   }
 
-  const userUrlDatabase = {};
-
-  for (let shortUrlKey in urlDatabase) {
-    if (urlDatabase[shortUrlKey].userID === req.session.user_id) {
-      userUrlDatabase[shortUrlKey] = urlDatabase[shortUrlKey].longURL;
-    }
-  }
+  const userUrlDatabase = createUserUrlDatabase(urlDatabase, req.session.user_id);
 
   const templateVars = { urls: userUrlDatabase, user: users[req.session.user_id] };
   res.render("urls_index", templateVars);
@@ -212,13 +199,7 @@ app.get("/urls/:shortURL", (req, res) => {
     return res.status(400).send("400: you need to be logged in to have access to urls");
   }
 
-  const userUrlDatabase = {};
-
-  for (let shortUrlKey in urlDatabase) {
-    if (urlDatabase[shortUrlKey].userID === req.session.user_id) {
-      userUrlDatabase[shortUrlKey] = urlDatabase[shortUrlKey].longURL;
-    }
-  }
+  const userUrlDatabase = createUserUrlDatabase(urlDatabase, req.session.user_id);
 
   if (!userUrlDatabase[req.params.shortURL]) {
     return res.status(400).send(`400: ${req.params.shortURL} is not one of your short URLs`);
@@ -234,33 +215,3 @@ app.get("/urls.json", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
-
-const generateRandomString = function() {
-  let chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let charsArray = chars.split("");
-  let tinyUrl = "";
-  for (let i = 0; i < 6; i ++) {
-    let randomIndex = Math.floor(Math.random() * charsArray.length);
-    tinyUrl += charsArray[randomIndex];
-  }
-  return tinyUrl;
-};
-
-const findUserByEmail = function(email) {
-  for (let userId in users) {
-    const user = users[userId];
-    if (user.email === email) {
-      return user;
-    }
-  }
-  return null;
-};
-
-const urlsForUser = function(id) {
-  for (let shortURL in urlDatabase) {
-    if (urlDatabase[shortURL].userID === id) {
-      return urlDatabase[shortURL].longURL;
-    }
-  }
-  return null;
-};
