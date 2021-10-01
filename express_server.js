@@ -5,12 +5,14 @@ const morgan = require("morgan");
 const bodyParser = require("body-parser");
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcryptjs');
+var methodOverride = require('method-override');
 const helper = require("./helpers");
 const generateRandomString = helper.generateRandomString;
 const findUserByEmail = helper.findUserByEmail;
 const createUserUrlDatabase = helper.createUserUrlDatabase;
 
 
+app.use(methodOverride('_method'));
 app.use(bodyParser.urlencoded({extended: true}));
 app.set("view engine", "ejs");
 app.use(cookieSession({
@@ -96,7 +98,7 @@ app.post("/urls/new", (req, res) => {
   }
 });
 
-app.post("/urls/:shortUrl/redirect", (req, res) => {
+app.put("/urls/:shortUrl/redirect", (req, res) => {
   if (!req.session.user_id) {
     return res.status(400).send("400: you must be logged in to edit urls");
   }
@@ -111,7 +113,7 @@ app.post("/urls/:shortUrl/redirect", (req, res) => {
   res.redirect(`/urls/${shortURL}`);
 });
 
-app.post("/urls/:shortUrl/delete", (req, res) => {
+app.delete("/urls/:shortUrl/delete", (req, res) => {
   if (!req.session.user_id) {
     return res.status(400).send("400: you must be logged in to delete urls");
   }
@@ -127,7 +129,7 @@ app.post("/urls/:shortUrl/delete", (req, res) => {
   res.redirect("/urls");
 });
 
-app.post("/urls/:id", (req, res) => {
+app.put("/urls/:id", (req, res) => {
   let id = req.params.id;
   urlDatabase[id].longURL = req.body.longURL;
   res.redirect(`/urls/${id}`);
@@ -163,7 +165,7 @@ app.get("/login", (req, res) => {
   res.render("login");
 });
 
-app.post("/logout", (req, res) => {
+app.put("/logout", (req, res) => {
   req.session = null;
   res.redirect("/login");
 });

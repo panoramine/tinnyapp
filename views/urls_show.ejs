@@ -17,7 +17,7 @@
 
       <div class="card-footer text-muted">
       <div class="card-body">
-        <form style="padding: 0px 500px;" action="/urls/<%= shortURL %>" method="POST">
+        <form style="padding: 0px 500px;" action="/urls/<%= shortURL %>?_method=PUT" method="POST">
           <div class="form-group mb-2">
             <h2>Edit</h2>
             <label for="longURL">New URL:</label>
