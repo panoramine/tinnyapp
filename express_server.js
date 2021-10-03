@@ -22,57 +22,43 @@ app.use(cookieSession({
 app.use(morgan("tiny"));
 
 
-const urlDatabase = {
-  b6UTxQ: {
-    longURL: "https://www.tsn.ca",
-    userID: "aJ48lW"
-  },
-  i3BoGr: {
-    longURL: "https://www.google.ca",
-    userID: "aJ48lW"
-  }
-};
-
-const users = {
-  "userRandomID": {
-    id: "userRandomID",
-    email: "user@example.com",
-    password: "purple-monkey-dinosaur"
-  }
-};
-
 app.get("/", (req, res) => {
+  //checks if user is logged in and redirects to urls page if so and to the login page if not
   if (req.session.user_id) {
     res.redirect("/urls");
+  } else {
+    res.redirect("/login");
   }
-
-  res.redirect("/login");
 });
 
 app.get("/register", (req, res) => {
+  // if there is a session
   if (req.session.user_id) {
     res.redirect("/urls");
+  } else { //if there is not
+    res.render("register");
   }
-
-  res.render("register");
 });
 
 app.post("/register", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
 
+  //checking for blank fields
   if (!email || !password) {
     return res.status(400).send("400: email or password cannot be blank, <a href='/register'>back to register</a>");
   }
 
   const user = findUserByEmail(email, users);
 
+  //checking if the e-mail is already in use
   if (user) {
     return res.status(400).send("400: user with that email currently exists, <a href='/register'>back to register</a>");
   }
 
   const id = Math.floor(Math.random() * 5000) + 1;
 
+  //password if hashed before storage
   const hashedPasswrod = bcrypt.hashSync(password, 10);
 
   users[id] = {
@@ -81,15 +67,22 @@ app.post("/register", (req, res) => {
     password: hashedPasswrod
   };
 
+  //creates cookie
   req.session.user_id = users[id].id;
   
   res.redirect("/urls");
 });
 
 app.post("/urls/new", (req, res) => {
+  //redirect user that is not logged in
+  if (!req.session.user_id) {
+    res.redirect("/login")
+  }
+
+  //avoid the submission of a blank url
   if (req.body.longURL.length === 0) {
     res.redirect("/urls/new");
-  } else {
+  } else { //enters data to the database
     const tinyString = generateRandomString();
     urlDatabase[tinyString] = {};
     urlDatabase[tinyString].longURL = req.body.longURL;
@@ -98,28 +91,38 @@ app.post("/urls/new", (req, res) => {
   }
 });
 
-app.put("/urls/:shortUrl/redirect", (req, res) => {
+app.put("/urls/:shortUrl", (req, res) => {
+  //checks if the user is logged in
   if (!req.session.user_id) {
     return res.status(400).send("400: you must be logged in to edit urls");
   }
-
+  
   const userUrlDatabase = createUserUrlDatabase(urlDatabase, req.session.user_id);
-
+  
+  //checks if user owns the url they are trying to access
   if (!userUrlDatabase[req.params.shortUrl]) {
     return res.status(400).send("400: you can only edit your own urls");
   }
   
   const shortURL = req.params.shortUrl;
-  res.redirect(`/urls/${shortURL}`);
+
+  if(req.body.longURL){                                  //if submitting a url
+    urlDatabase[shortURL].longURL = req.body.longURL;
+    res.redirect(`/urls/${shortURL}`);
+  } else {
+    res.redirect(`/urls/${shortURL}`);
+  }
 });
 
 app.delete("/urls/:shortUrl/delete", (req, res) => {
+  //checks if user is logged in
   if (!req.session.user_id) {
     return res.status(400).send("400: you must be logged in to delete urls");
   }
 
   const userUrlDatabase = createUserUrlDatabase(urlDatabase, req.session.user_id);
 
+  //checks if user onws the url
   if (!userUrlDatabase[req.params.shortUrl]) {
     return res.status(400).send("400: you can only delete your own urls");
   }
@@ -129,23 +132,17 @@ app.delete("/urls/:shortUrl/delete", (req, res) => {
   res.redirect("/urls");
 });
 
-app.put("/urls/:id", (req, res) => {
-  let id = req.params.id;
-  urlDatabase[id].longURL = req.body.longURL;
-  res.redirect(`/urls/${id}`);
-});
-
 app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
 
-  if (!email || !password) {
+  if (!email || !password) {  //checks is there are blank fields
     return res.status(400).send("400: email or password cannot be blank, <a href='/login'>back to login</a>");
   }
 
   const user = findUserByEmail(email, users);
   
-  if (!user) {
+  if (!user) {      //checks if user already registered
     return res.status(403).send("403: e-mail cannot be found, <a href='/login'>back to login</a>");
   }
 
@@ -158,21 +155,22 @@ app.post("/login", (req, res) => {
 });
 
 app.get("/login", (req, res) => {
+  //1. if the Session is already there
   if (req.session.user_id) {
     res.redirect("/urls");
+  } else {  //2. If the user is not logged in
+    res.render("login");
   }
-
-  res.render("login");
 });
 
 app.put("/logout", (req, res) => {
-  req.session = null;
+  req.session = null;   //clear cookies
   res.redirect("/login");
 });
 
 app.get("/u/:shortURL", (req, res) => {
-  if (!urlDatabase[req.params.shortURL].longURL) {
-    return res.status(404).send("404: tiny url not found");
+  if (!urlDatabase[req.params.shortURL]) {   //if the url is not in the database
+    return res.status(404).send("404: tiny url not found");       //send error
   }
 
   const longURL = urlDatabase[req.params.shortURL].longURL;
@@ -180,19 +178,20 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  if (!req.session.user_id) {
+  if (!req.session.user_id) {  //checks if user is logged in
     return res.status(400).send("400: you must be <a href='/login'>logged in</a> to have access to urls");
   }
 
   const userUrlDatabase = createUserUrlDatabase(urlDatabase, req.session.user_id);
 
-  const templateVars = { urls: userUrlDatabase, user: users[req.session.user_id] };
+  const templateVars = { urls: userUrlDatabase, user: users[req.session.user_id] };  //templete variables
   res.render("urls_index", templateVars);
 });
 
 app.get("/urls/new", (req, res) => {
   const templateVars = { user: users[req.session.user_id] };
 
+  //checks if user is logged in
   if (!templateVars.user) {
     return res.redirect("/login");
   }
@@ -201,12 +200,14 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:shortURL", (req, res) => {
+  //check if user is logged in
   if (!req.session.user_id) {
     return res.status(400).send("400: you must be logged in to have access to urls");
   }
   
   const userUrlDatabase = createUserUrlDatabase(urlDatabase, req.session.user_id);
   
+  //check if url belongs to user
   if (!userUrlDatabase[req.params.shortURL]) {
     return res.status(400).send(`400: ${req.params.shortURL} is not one of your short URLs`);
   }

@@ -26,11 +26,11 @@
           <tr>
             <td><%= shortURL %></td>
             <td><%= urls[shortURL] %></td>
-            <td><form action="/urls/<%= shortURL %>/redirect?_method=PUT" method="POST">
-              <button style= 'background-color: white; border-radius: 1mm; border-color:dodgerblue; color:dodgerblue; border-style: dotted;' type="submit">Edit</button>
-            </form></td>
+            <td>
+             <a href ="/urls/<%=shortURL%>" class="btn btn-primary" style= 'background-color: white; border-radius: 1mm; border-color:dodgerblue; color:dodgerblue; border-style: dotted;'>Edit</a>
+            </td>
             <td><form method="POST" action="/urls/<%= shortURL %>/delete?_method=DELETE">
-              <button style= 'background-color: white; border-radius: 1mm; border-color:red; color: red; border-style: dotted;' type="submit">Delete</button>
+              <button class="btn btn-primary" style= 'background-color: white; border-radius: 1mm; border-color:red; color: red; border-style: dotted;' type="submit">Delete</button>
             </form></td>
           </tr>
         <% } %>
