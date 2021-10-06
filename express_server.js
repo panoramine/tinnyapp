@@ -22,6 +22,27 @@ app.use(cookieSession({
 app.use(morgan("tiny"));
 
 
+const urlDatabase = {
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "aJ48lW"
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "aJ48lW"
+  }
+};
+
+const users = {
+  "userRandomID": {
+    id: "userRandomID",
+    email: "user@example.com",
+    password: "purple-monkey-dinosaur"
+  }
+};
+
+
+
 app.get("/", (req, res) => {
   //checks if user is logged in and redirects to urls page if so and to the login page if not
   if (req.session.user_id) {
@@ -163,7 +184,7 @@ app.get("/login", (req, res) => {
   }
 });
 
-app.put("/logout", (req, res) => {
+app.post("/logout", (req, res) => {
   req.session = null;   //clear cookies
   res.redirect("/login");
 });
